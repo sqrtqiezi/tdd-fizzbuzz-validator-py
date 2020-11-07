@@ -23,8 +23,8 @@ pipeline {
         }
         stage('Copy code files') {
             steps {
-                sh "cp -avr ./fizzbuzz-code/fizzbuzz ./fizzbuzz"
-                sh "cp -avr ./fizzbuzz-code/tests ./tests"
+                sh "cp -avr ./fizzbuzz-code/fizzbuzz ./"
+                sh "cp -avr ./fizzbuzz-code/tests ./"
                 sh "cp -v ./fizzbuzz-code/main.py ./"
                 sh 'ls -lat'
             }
