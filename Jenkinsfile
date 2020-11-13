@@ -21,6 +21,7 @@ pipeline {
                 }
             }
         }
+        
         stage('Copy code files') {
             steps {
                 sh "cp -avr ./fizzbuzz-code/fizzbuzz ./"
