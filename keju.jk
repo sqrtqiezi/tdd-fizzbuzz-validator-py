@@ -1,0 +1,74 @@
+pipeline {
+    agent none
+
+    stages {
+        stage('Build') {
+            agent {
+                docker {
+                    image 'python:3.6'
+                }
+            }
+            steps {
+                sh "rm -rf problem && rm -rf .validator"
+                checkout scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'problem']], submoduleCfg: [], userRemoteConfigs: [[url: "${repoUrl}",credentialsId: "${credentialsId}"]]]
+                checkout scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: '.validator']], submoduleCfg: [], userRemoteConfigs: [[url: "${validatorUrl}",credentialsId: "${credentialsId}"]]]
+                sh "cp -avr ./problem/fizzbuzz .validator/ && cp -avr ./problem/tests .validator/ && cp -v ./problem/main.py .validator/"
+	            echo 'Building..'
+                sh 'cd .validator && pip install -i https://pypi.doubanio.com/simple/ -r ./requirements.txt'
+            }
+        }
+        stage('Style Check') {
+            agent {
+                docker {
+                    image 'python:3.6'
+                }
+            }
+            steps {
+                echo 'Checking'
+                sh 'cd .validator && pip install -i https://pypi.doubanio.com/simple/ -r ./requirements.txt && python -m pylint fizzbuzz'
+            }
+        }
+        stage('Test') {
+            agent {
+                docker {
+                    image 'python:3.6'
+                }
+            }
+            steps {
+                echo 'testing'
+                sh 'cd .validator && pip install -i https://pypi.doubanio.com/simple/ -r ./requirements.txt && python -m pytest --cov-branch --cov=fizzbuzz tests/ --cov-report xml:coverage.xml'
+            }
+        }
+        stage('SonarQube analysis') {
+            agent {
+                docker {
+                    image 'emeraldsquad/sonar-scanner'
+                    args '-v $HOME/.sonar:$HOME/.sonar'
+                }
+            }
+            steps {
+                sh "cd .validator && sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${sonarProjectKey} -Dsonar.sources=fizzbuzz -Dsonar.exclusions=**/main.py -Dsonar.python.coverage.reportPath=./coverage.xml -Dsonar.host.url=${sonarUrl} -Dsonar.login=${sonarToken}"
+            }
+        }
+        stage('Run') {
+            agent {
+                docker {
+                    image 'python:3.6'
+                }
+            }
+            steps {
+                echo 'running'
+                sh 'cd .validator && python main.py --test-data=./resource/testData2.txt > temp'
+                script {
+                    String diff = sh(returnStdout: true, script: "diff .validator/temp .validator/resource/answer.txt")
+                    if (diff != "") {
+                        echo diff
+                        echo "failure"
+                    } else {
+                        echo "success"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -56,7 +56,9 @@ pipeline {
                     String diff = sh(returnStdout: true, script: "diff temp resource/answer.txt")
                     if (diff != "") {
                         echo diff
-                        error("The answer is incorrect!")
+                        echo "failure"
+                    } else {
+                        echo "success"
                     }
                 }
             }
